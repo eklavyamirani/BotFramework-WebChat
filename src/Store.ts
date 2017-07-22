@@ -506,7 +506,7 @@ const speakSSML:Epic<ChatActions, ChatState> = (action$, store) =>
 
 const speakOnMessageReceived:Epic<ChatActions, ChatState> = (action$, store) =>
     action$.ofType('Receive_Message')
-    .filter(action => (action.activity as Message) && store.getState().shell.lastInputViaSpeech)
+    .filter(action => (action.activity as Message) !== null && action.activity.speak)
     .map(action => speakFromMsg(action.activity as Message, store.getState().format.locale) as ShellAction);
 
 const stopSpeaking: Epic<ChatActions, ChatState> = (action$) =>
