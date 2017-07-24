@@ -5,6 +5,7 @@ import { Carousel } from './Carousel';
 import { FormattedText } from './FormattedText';
 import { FormatState, SizeState } from './Store';
 import { IDoCardAction } from './Chat';
+import { AudioComponent } from './AudioComponent';
 
 const Attachments = (props: {
     attachments: Attachment[],
@@ -66,6 +67,10 @@ export class ActivityView extends React.Component<ActivityViewProps, {}> {
             case 'message':
                 return (
                     <div>
+                        <AudioComponent
+                            text={ activity.speak }
+                            locale ={ activity.locale }
+                        />
                         <FormattedText
                             text={ activity.text }
                             format={ activity.textFormat }
