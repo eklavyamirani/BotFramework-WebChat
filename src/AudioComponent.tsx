@@ -1,5 +1,6 @@
 import * as React from 'react';
-import {Speech } from './SpeechModule'
+import { Speech } from './SpeechModule';
+import { createStore, ShellAction } from './Store';
 
 export interface IAudioComponentProps {
     text?: string,
@@ -9,6 +10,11 @@ export interface IAudioComponentProps {
 // TODO: Should this be propagated from somewhere else?
 const playSpeech = (text: string, locale: string) => {
     Speech.SpeechSynthesizer.speak(text, locale);
+    Speech.SpeechRecognizer.startRecognizing();
+    const store = createStore();
+    store.dispatch<ShellAction>({
+        type: "Listening_Start"
+    });
 }
 
 export const AudioComponent = (props: IAudioComponentProps) => {
