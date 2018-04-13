@@ -53,9 +53,9 @@
         bot: bot,
         locale: params['locale'],
         resize: 'window',
-        // sendTyping: true,    // defaults to false. set to true to send 'typing' activities to bot (and other users) when user is typing
+        sendTyping: true,    // defaults to false. set to true to send 'typing' activities to bot (and other users) when user is typing
         user: user,
-
+        suggestResponse: logToConsole,
         directLine: {
           secret: params['s'],
           token: params['t'],
@@ -63,6 +63,10 @@
           webSocket: params['webSocket'] && params['webSocket'] === 'true' // defaults to true
         }
       }, document.getElementById('BotChatGoesHere'));
+
+      function logToConsole(input) {
+        console.log("suggestions: " + input);
+      }
     </script>
   </body>
 </html>

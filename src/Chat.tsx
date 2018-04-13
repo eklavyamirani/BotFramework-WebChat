@@ -24,7 +24,8 @@ export interface ChatProps {
     selectedActivity?: BehaviorSubject<ActivityOrID>,
     sendTyping?: boolean,
     formatOptions?: FormatOptions,
-    resize?: 'none' | 'window' | 'detect'
+    resize?: 'none' | 'window' | 'detect',
+    suggestResponse?: (input: string) => Promise<string[]>
 }
 
 import { History } from './History';
@@ -67,6 +68,10 @@ export class Chat extends React.Component<ChatProps, {}> {
         if (props.speechOptions) {
             Speech.SpeechRecognizer.setSpeechRecognizer(props.speechOptions.speechRecognizer);
             Speech.SpeechSynthesizer.setSpeechSynthesizer(props.speechOptions.speechSynthesizer);
+        }
+
+        if (props.suggestResponse) {
+            this.store.dispatch<ChatActions>({ type: 'Set_Suggest_Response', suggestResponse: props.suggestResponse});
         }
     }
 

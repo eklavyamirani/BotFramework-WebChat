@@ -6,6 +6,7 @@ import { Dispatch, connect } from 'react-redux';
 import { Strings } from './Strings';
 import { Speech } from './SpeechModule'
 import { ChatActions, sendMessage, sendFiles } from './Store';
+import * as Autosuggest from 'react-autosuggest';
 
 interface Props {
     inputText: string,
@@ -24,12 +25,17 @@ export interface ShellFunctions {
     focus: (appendKey?: string) => void
 }
 
-class ShellContainer extends React.Component<Props, {}> implements ShellFunctions {
+class ShellContainer extends React.Component<Props, {value: string, suggestions: string[]}> implements ShellFunctions {
     private textInput: HTMLInputElement;
     private fileInput: HTMLInputElement;
 
     constructor(props: Props) {
         super(props);
+
+        this.state = {
+            value: '',
+            suggestions: []
+        }
     }
 
     private sendMessage() {
@@ -74,6 +80,12 @@ class ShellContainer extends React.Component<Props, {}> implements ShellFunction
         }
     }
 
+    private onSuggestionsRequested(input: string): void {
+        this.setState({
+            suggestions: [(Math.random() * 50).toString()]
+        });
+    }
+
     render() {
         let className = 'wc-console';
         if (this.props.inputText.length > 0) className += ' has-text';
@@ -91,6 +103,18 @@ class ShellContainer extends React.Component<Props, {}> implements ShellFunction
             this.props.listening && 'active',
             !this.props.listening && 'inactive',
         );
+        
+        const onInputChanged = (event:React.FormEvent<any>, {newValue}: Autosuggest.ChangeEvent) => { 
+            this.setState({value: newValue});
+            debugger;
+            // blank
+        }
+
+        const inputProps: Autosuggest.InputProps = {
+            placeholder: 'Type something to see suggestions',
+            value: this.state.value,
+            onChange: onInputChanged 
+        }
 
         return (
             <div className={className}>
@@ -101,7 +125,7 @@ class ShellContainer extends React.Component<Props, {}> implements ShellFunction
                     </svg>
                 </label>
                 <div className="wc-textbox">
-                    <input
+                    {/* <input
                         type="text"
                         className="wc-shellinput"
                         ref={ input => this.textInput = input }
@@ -111,7 +135,15 @@ class ShellContainer extends React.Component<Props, {}> implements ShellFunction
                         onKeyPress={ e => this.onKeyPress(e) }
                         onFocus = {() => this.onTextInputFocus()}
                         placeholder={ this.props.listening ? this.props.strings.listeningIndicator : this.props.strings.consolePlaceholder }
-                    />
+                    /> */}
+                    <Autosuggest
+                     suggestions={[]}
+                     onSuggestionsFetchRequested={(input) => this.onSuggestionsRequested(input.value)}
+                     getSuggestionValue={(suggestion) => suggestion.name}
+                     renderSuggestion={(suggestion: number, params: Autosuggest.RenderSuggestionParams) => <span>{suggestion}</span>}
+                     inputProps= {inputProps}
+                     alwaysRenderSuggestions = {true}
+                     />
                 </div>
                 <label className={sendButtonClassName} onClick={ () => this.onClickSend() } >
                     <svg>
