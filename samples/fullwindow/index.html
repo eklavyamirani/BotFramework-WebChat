@@ -65,7 +65,27 @@
       }, document.getElementById('BotChatGoesHere'));
 
       function logToConsole(input) {
-        console.log("suggestions: " + input);
+        return {
+          then: (thenCallback) => {
+            if (!input || input.length === 0) {
+              thenCallback([]);
+              return;
+            }
+
+            let availableCommands = ["help", "hello", "who Am I", "what is your name", "what can you do", "why is the sky blue"];
+            
+            let suggestions = [];
+            for (let i = 0; i < availableCommands.length; ++i) {
+              if (availableCommands[i].indexOf(input.toLowerCase()) !== -1) {
+                suggestions.push(availableCommands[i]);
+              }
+            };
+            
+            console.log("suggestions: " + suggestions);
+            thenCallback(suggestions);
+          },
+          catch: () => {}
+        };
       }
     </script>
   </body>

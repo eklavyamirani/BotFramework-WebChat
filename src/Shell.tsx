@@ -12,6 +12,7 @@ interface Props {
     inputText: string,
     strings: Strings,
     listening: boolean,
+    suggestResponse: (input: string) => Promise<string[]>,
 
     onChangeText: (inputText: string) => void
 
@@ -81,8 +82,10 @@ class ShellContainer extends React.Component<Props, {value: string, suggestions:
     }
 
     private onSuggestionsRequested(input: string): void {
-        this.setState({
-            suggestions: [(Math.random() * 50).toString()]
+        this.props.suggestResponse(input).then((suggestions: string[]) => {
+            this.setState({
+                suggestions: suggestions
+            });
         });
     }
 
@@ -106,11 +109,10 @@ class ShellContainer extends React.Component<Props, {value: string, suggestions:
         
         const onInputChanged = (event:React.FormEvent<any>, {newValue}: Autosuggest.ChangeEvent) => { 
             this.setState({value: newValue});
-            debugger;
             // blank
         }
 
-        const inputProps: Autosuggest.InputProps = {
+        const inputProps: Autosuggest.InputProps<any> = {
             placeholder: 'Type something to see suggestions',
             value: this.state.value,
             onChange: onInputChanged 
@@ -137,13 +139,13 @@ class ShellContainer extends React.Component<Props, {value: string, suggestions:
                         placeholder={ this.props.listening ? this.props.strings.listeningIndicator : this.props.strings.consolePlaceholder }
                     /> */}
                     <Autosuggest
-                     suggestions={[]}
+                     suggestions={this.state.suggestions}
                      onSuggestionsFetchRequested={(input) => this.onSuggestionsRequested(input.value)}
-                     getSuggestionValue={(suggestion) => suggestion.name}
-                     renderSuggestion={(suggestion: number, params: Autosuggest.RenderSuggestionParams) => <span>{suggestion}</span>}
+                     getSuggestionValue={(suggestion) => suggestion.toString()}
+                     renderSuggestion={(suggestion: string, params: Autosuggest.RenderSuggestionParams) => <span>{suggestion}</span>}
                      inputProps= {inputProps}
                      alwaysRenderSuggestions = {true}
-                     />
+                    />
                 </div>
                 <label className={sendButtonClassName} onClick={ () => this.onClickSend() } >
                     <svg>
@@ -171,7 +173,8 @@ export const Shell = connect(
         // only used to create helper functions below
         locale: state.format.locale,
         user: state.connection.user,
-        listening : state.shell.listening
+        listening : state.shell.listening,
+        suggestResponse: state.shell.suggestResponse
     }), {
         // passed down to ShellContainer
         onChangeText: (input: string) => ({ type: 'Update_Input', input, source: "text" } as ChatActions),
@@ -191,7 +194,8 @@ export const Shell = connect(
         sendMessage: (text: string) => dispatchProps.sendMessage(text, stateProps.user, stateProps.locale),
         sendFiles: (files: FileList) => dispatchProps.sendFiles(files, stateProps.user, stateProps.locale),
         startListening: () => dispatchProps.startListening(),
-        stopListening: () => dispatchProps.stopListening()
+        stopListening: () => dispatchProps.stopListening(),
+        suggestResponse: stateProps.suggestResponse
     }), {
         withRef: true
     }

@@ -704,4 +704,8 @@
     .wc-app ::-webkit-scrollbar-thumb {
         background-color: $c_chrome;
     }
+
+    .react-autosuggest__suggestions-list {
+        list-style: none;
+    }
     
