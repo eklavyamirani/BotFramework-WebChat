@@ -65,12 +65,12 @@ You can isolate your instance of Web Chat by running it inside an IFRAME. This i
 
 Add a DirectLine (**not Web Chat**) channel, and generate a Direct Line Secret. Make sure to enable Direct Line 3.0.
 
-Add Web Chat to your React project via `npm install botframework-webchat`
+Add Web Chat to your React project via `npm install botframework-webchat`. This will install latest stable build. If you want to try out features and fixes direct from our GitHub, install via `npm install botframework-webchat@master`.
 
 Include the `Chat` component in your React app, e.g.:
 
 ```typescript
-Import { Chat } from 'botframework-webchat';
+import { Chat } from 'botframework-webchat';
 
 ...
 
@@ -129,6 +129,12 @@ Web Chat includes support for spoken conversations by leveraging Speech Recognit
 
 Speech support is opt-in. As shown in `/samples/speech`, you can customize the speech experience by supplying a specific implementation for speech recognition and speech synthesis to be used.
 
+ ```HTML
+...
+   <script src="https://cdn.botframework.com/botframework-webchat/latest/botchat.js"></script>
+   <script src="https://cdn.botframework.com/botframework-webchat/latest/CognitiveServices.js"></script>
+...
+```
 ```typescript
 var speechOptions = {
     speechRecognizer: new CognitiveServices.SpeechRecognizer( { subscriptionKey: 'YOUR_COGNITIVE_SPEECH_API_KEY' } ),
@@ -158,7 +164,7 @@ In the `/src/scss/` folder you will find the source files for generating `/botch
 
 #### Card Layout
 
-Web Chat uses [AdaptiveCards](https://adaptivecards.io) that let the bot developer create cards with advanced layout and interactive capabilities. For more details, see [AdaptiveCards.md](AdaptiveCards.md)
+Web Chat uses [Adaptive Cards](https://adaptivecards.io) that let the bot developer create cards with advanced layout and interactive capabilities. For more details, see [AdaptiveCards.md](AdaptiveCards.md)
 
 #### Card Sizes / Responsiveness
 
@@ -166,7 +172,7 @@ Web Chat strives to use responsive design when possible. As part of this, Web Ch
 
 ### Strings
 
-You can alter or add localized strings in `/src/Strings.ts`:
+You can alter or add localized strings in [/src/Strings.ts](src/Strings.ts):
 
 * Add one or more locales (with associated localized strings) to `localizedStrings`
 * Add logic to map the requested locale to the supported locale in `strings`

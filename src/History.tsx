@@ -6,11 +6,13 @@ import { ActivityView } from './ActivityView';
 import { classList, doCardAction, IDoCardAction } from './Chat';
 import * as konsole from './Konsole';
 import { sendMessage } from './Store';
+import { activityWithSuggestedActions } from './activityWithSuggestedActions';
 
 export interface HistoryProps {
     format: FormatState,
     size: SizeState,
     activities: Activity[],
+    hasActivityWithSuggestedActions: Activity,
 
     setMeasurements: (carouselMargin: number) => void,
     onClickRetry: (activity: Activity) => void,
@@ -19,6 +21,8 @@ export interface HistoryProps {
     isFromMe: (activity: Activity) => boolean,
     isSelected: (activity: Activity) => boolean,
     onClickActivity: (activity: Activity) => React.MouseEventHandler<HTMLDivElement>,
+
+    onCardAction: () => void,
     doCardAction: IDoCardAction
 }
 
@@ -34,8 +38,14 @@ export class HistoryView extends React.Component<HistoryProps, {}> {
         super(props);
     }
 
-    componentWillUpdate() {
-        this.scrollToBottom = (Math.abs(this.scrollMe.scrollHeight - this.scrollMe.scrollTop - this.scrollMe.offsetHeight) <= 1);
+    componentWillUpdate(nextProps: HistoryProps) {
+        let scrollToBottomDetectionTolerance = 1;
+
+        if (!this.props.hasActivityWithSuggestedActions && nextProps.hasActivityWithSuggestedActions) {
+            scrollToBottomDetectionTolerance = 40; // this should be in-sync with $actionsHeight scss var
+        }
+
+        this.scrollToBottom = (Math.abs(this.scrollMe.scrollHeight - this.scrollMe.scrollTop - this.scrollMe.offsetHeight) <= scrollToBottomDetectionTolerance);
     }
 
     componentDidUpdate() {
@@ -105,6 +115,7 @@ export class HistoryView extends React.Component<HistoryProps, {}> {
 
     private doCardAction(type: CardActionTypes, value: string | object) {
         this.props.onClickCardAction();
+        this.props.onCardAction && this.props.onCardAction();
         return this.props.doCardAction(type, value);
     }
 
@@ -118,38 +129,44 @@ export class HistoryView extends React.Component<HistoryProps, {}> {
                 content = <this.measurableCarousel/>;
             } else {
                 content = this.props.activities.map((activity, index) =>
-                    <WrappedActivity
-                        format={ this.props.format }
-                        key={ 'message' + index }
-                        activity={ activity }
-                        showTimestamp={ index === this.props.activities.length - 1 || (index + 1 < this.props.activities.length && suitableInterval(activity, this.props.activities[index + 1])) }
-                        selected={ this.props.isSelected(activity) }
-                        fromMe={ this.props.isFromMe(activity) }
-                        onClickActivity={ this.props.onClickActivity(activity) }
-                        onClickRetry={ e => {
-                            // Since this is a click on an anchor, we need to stop it
-                            // from trying to actually follow a (nonexistant) link
-                            e.preventDefault();
-                            e.stopPropagation();
-                            this.props.onClickRetry(activity)
-                        } }
-                    >
-                        <ActivityView
+                    (activity.type !== 'message' || activity.text || (activity.attachments && activity.attachments.length)) &&
+                        <WrappedActivity
                             format={ this.props.format }
-                            size={ this.props.size }
+                            key={ 'message' + index }
                             activity={ activity }
-                            onCardAction={ (type: CardActionTypes, value: string | object) => this.doCardAction(type, value) }
-                            onImageLoad={ () => this.autoscroll() }
-                        />
-                    </WrappedActivity>
+                            showTimestamp={ index === this.props.activities.length - 1 || (index + 1 < this.props.activities.length && suitableInterval(activity, this.props.activities[index + 1])) }
+                            selected={ this.props.isSelected(activity) }
+                            fromMe={ this.props.isFromMe(activity) }
+                            onClickActivity={ this.props.onClickActivity(activity) }
+                            onClickRetry={ e => {
+                                // Since this is a click on an anchor, we need to stop it
+                                // from trying to actually follow a (nonexistant) link
+                                e.preventDefault();
+                                e.stopPropagation();
+                                this.props.onClickRetry(activity)
+                            } }
+                        >
+                            <ActivityView
+                                format={ this.props.format }
+                                size={ this.props.size }
+                                activity={ activity }
+                                onCardAction={ (type: CardActionTypes, value: string | object) => this.doCardAction(type, value) }
+                                onImageLoad={ () => this.autoscroll() }
+                            />
+                        </WrappedActivity>
                 );
             }
         }
 
-        const groupsClassName = classList('wc-message-groups', !this.props.format.options.showHeader && 'no-header');
+        const groupsClassName = classList('wc-message-groups', !this.props.format.chatTitle && 'no-header');
 
         return (
-            <div className={ groupsClassName } ref={ div => this.scrollMe = div || this.scrollMe }>
+            <div
+                className={ groupsClassName }
+                ref={ div => this.scrollMe = div || this.scrollMe }
+                role="log"
+                tabIndex={ 0 }
+            >
                 <div className="wc-message-group-content" ref={ div => { if (div) this.scrollContent = div }}>
                     { content }
                 </div>
@@ -164,6 +181,7 @@ export const History = connect(
         format: state.format,
         size: state.size,
         activities: state.history.activities,
+        hasActivityWithSuggestedActions: !!activityWithSuggestedActions(state.history.activities),
         // only used to create helper functions below
         connectionSelectedActivity: state.connection.selectedActivity,
         selectedActivity: state.history.selectedActivity,
@@ -180,6 +198,7 @@ export const History = connect(
         format: stateProps.format,
         size: stateProps.size,
         activities: stateProps.activities,
+        hasActivityWithSuggestedActions: stateProps.hasActivityWithSuggestedActions,
         // from dispatchProps
         setMeasurements: dispatchProps.setMeasurements,
         onClickRetry: dispatchProps.onClickRetry,
@@ -188,8 +207,11 @@ export const History = connect(
         doCardAction: doCardAction(stateProps.botConnection, stateProps.user, stateProps.format.locale, dispatchProps.sendMessage),
         isFromMe: (activity: Activity) => activity.from.id === stateProps.user.id,
         isSelected: (activity: Activity) => activity === stateProps.selectedActivity,
-        onClickActivity: (activity: Activity) => stateProps.connectionSelectedActivity && (() => stateProps.connectionSelectedActivity.next({ activity }))
-    })
+        onClickActivity: (activity: Activity) => stateProps.connectionSelectedActivity && (() => stateProps.connectionSelectedActivity.next({ activity })),
+        onCardAction: ownProps.onCardAction
+    }), {
+        withRef: true
+    }
 )(HistoryView);
 
 const getComputedStyleValues = (el: HTMLElement, stylePropertyNames: string[]) => {

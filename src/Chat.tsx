@@ -15,6 +15,8 @@ import * as konsole from './Konsole';
 import { getTabIndex } from './getTabIndex';
 
 export interface ChatProps {
+    adaptiveCardsHostConfig: any,
+    chatTitle?: boolean | string,
     user: User,
     bot: User,
     botConnection?: IBotConnection,
@@ -23,6 +25,7 @@ export interface ChatProps {
     locale?: string,
     selectedActivity?: BehaviorSubject<ActivityOrID>,
     sendTyping?: boolean,
+    showUploadButton?: boolean,
     formatOptions?: FormatOptions,
     resize?: 'none' | 'window' | 'detect',
     suggestResponse?: (input: string) => Promise<string[]>
@@ -42,11 +45,15 @@ export class Chat extends React.Component<ChatProps, {}> {
     private connectionStatusSubscription: Subscription;
     private selectedActivitySubscription: Subscription;
     private shellRef: React.Component & ShellFunctions;
+    private historyRef: React.Component;
+    private chatviewPanelRef: HTMLElement;
 
-    private chatviewPanel: HTMLElement;
     private resizeListener = () => this.setSize();
 
+    private _handleCardAction = this.handleCardAction.bind(this);
     private _handleKeyDownCapture = this.handleKeyDownCapture.bind(this);
+    private _saveChatviewPanelRef = this.saveChatviewPanelRef.bind(this);
+    private _saveHistoryRef = this.saveHistoryRef.bind(this);
     private _saveShellRef = this.saveShellRef.bind(this);
 
     constructor(props: ChatProps) {
@@ -59,11 +66,32 @@ export class Chat extends React.Component<ChatProps, {}> {
             locale: props.locale || (window.navigator as any)["userLanguage"] || window.navigator.language || 'en'
         });
 
-        if (props.formatOptions)
-            this.store.dispatch<ChatActions>({ type: 'Set_Format_Options', options: props.formatOptions });
+        if (props.adaptiveCardsHostConfig) {
+            this.store.dispatch<ChatActions>({
+                type: 'Set_AdaptiveCardsHostConfig',
+                payload: props.adaptiveCardsHostConfig
+            });
+        }
 
-        if (props.sendTyping)
+        let { chatTitle } = props;
+
+        if (props.formatOptions) {
+            console.warn('DEPRECATED: "formatOptions.showHeader" is deprecated, use "chatTitle" instead. See https://github.com/Microsoft/BotFramework-WebChat/blob/master/CHANGELOG.md#formatoptionsshowheader-is-deprecated-use-chattitle-instead.');
+
+            if (typeof props.formatOptions.showHeader !== 'undefined' && typeof props.chatTitle === 'undefined') {
+                chatTitle = props.formatOptions.showHeader;
+            }
+        }
+
+        if (typeof chatTitle !== 'undefined') {
+            this.store.dispatch<ChatActions>({ type: 'Set_Chat_Title', chatTitle });
+        }
+
+        this.store.dispatch<ChatActions>({ type: 'Toggle_Upload_Button', showUploadButton: props.showUploadButton });
+
+        if (props.sendTyping) {
             this.store.dispatch<ChatActions>({ type: 'Set_Send_Typing', sendTyping: props.sendTyping });
+        }
 
         if (props.speechOptions) {
             Speech.SpeechRecognizer.setSpeechRecognizer(props.speechOptions.speechRecognizer);
@@ -92,9 +120,19 @@ export class Chat extends React.Component<ChatProps, {}> {
     private setSize() {
         this.store.dispatch<ChatActions>({
             type: 'Set_Size',
-            width: this.chatviewPanel.offsetWidth,
-            height: this.chatviewPanel.offsetHeight
+            width: this.chatviewPanelRef.offsetWidth,
+            height: this.chatviewPanelRef.offsetHeight
         });
+    }
+
+    private handleCardAction() {
+        // After the user click on any card action, we will "blur" the focus, by setting focus on message pane
+        // This is for after click on card action, the user press "A", it should go into the chat box
+        const historyDOM = findDOMNode(this.historyRef) as HTMLElement;
+
+        if (historyDOM) {
+            historyDOM.focus();
+        }
     }
 
     private handleKeyDownCapture(evt: React.KeyboardEvent<HTMLDivElement>) {
@@ -102,7 +140,19 @@ export class Chat extends React.Component<ChatProps, {}> {
         const tabIndex = getTabIndex(target);
 
         if (
-            target === findDOMNode(this.chatviewPanel)
+            evt.altKey
+            || evt.ctrlKey
+            || evt.metaKey
+            || (!inputtableKey(evt.key) && evt.key !== 'Backspace')
+        ) {
+            // Ignore if one of the utility key (except SHIFT) is pressed
+            // E.g. CTRL-C on a link in one of the message should not jump to chat box
+            // E.g. "A" or "Backspace" should jump to chat box
+            return;
+        }
+
+        if (
+            target === findDOMNode(this.historyRef)
             || typeof tabIndex !== 'number'
             || tabIndex < 0
         ) {
@@ -121,8 +171,16 @@ export class Chat extends React.Component<ChatProps, {}> {
         }
     }
 
+    private saveChatviewPanelRef(chatviewPanelRef: HTMLElement) {
+        this.chatviewPanelRef = chatviewPanelRef;
+    }
+
+    private saveHistoryRef(historyWrapper: any) {
+        this.historyRef = historyWrapper && historyWrapper.getWrappedInstance();
+    }
+
     private saveShellRef(shellWrapper: any) {
-        this.shellRef = shellWrapper.getWrappedInstance();
+        this.shellRef = shellWrapper && shellWrapper.getWrappedInstance();
     }
 
     componentDidMount() {
@@ -174,6 +232,29 @@ export class Chat extends React.Component<ChatProps, {}> {
         window.removeEventListener('resize', this.resizeListener);
     }
 
+    componentWillReceiveProps(nextProps: ChatProps) {
+        if (this.props.adaptiveCardsHostConfig !== nextProps.adaptiveCardsHostConfig) {
+            this.store.dispatch<ChatActions>({
+                type: 'Set_AdaptiveCardsHostConfig',
+                payload: nextProps.adaptiveCardsHostConfig
+            });
+        }
+
+        if (this.props.showUploadButton !== nextProps.showUploadButton) {
+            this.store.dispatch<ChatActions>({
+                type: 'Toggle_Upload_Button',
+                showUploadButton: nextProps.showUploadButton
+            });
+        }
+
+        if (this.props.chatTitle !== nextProps.chatTitle) {
+            this.store.dispatch<ChatActions>({
+                type: 'Set_Chat_Title',
+                chatTitle: nextProps.chatTitle
+            });
+        }
+    }
+
     // At startup we do three render passes:
     // 1. To determine the dimensions of the chat panel (nothing needs to actually render here, so we don't)
     // 2. To determine the margins of any given carousel (we just render one mock activity so that we can measure it)
@@ -184,30 +265,30 @@ export class Chat extends React.Component<ChatProps, {}> {
         konsole.log("BotChat.Chat state", state);
 
         // only render real stuff after we know our dimensions
-        let header: JSX.Element;
-        if (state.format.options.showHeader) header =
-            <div className="wc-header">
-                <span>{ state.format.strings.title }</span>
-            </div>;
-
-        let resize: JSX.Element;
-        if (this.props.resize === 'detect') resize =
-            <ResizeDetector onresize={ this.resizeListener } />;
-
         return (
             <Provider store={ this.store }>
                 <div
                     className="wc-chatview-panel"
                     onKeyDownCapture={ this._handleKeyDownCapture }
-                    ref={ div => this.chatviewPanel = div }
-                    tabIndex={ 0 }
+                    ref={ this._saveChatviewPanelRef }
                 >
-                    { header }
+                    {
+                        !!state.format.chatTitle &&
+                            <div className="wc-header">
+                                <span>{ typeof state.format.chatTitle === 'string' ? state.format.chatTitle : state.format.strings.title }</span>
+                            </div>
+                    }
                     <MessagePane>
-                        <History />
+                        <History
+                            onCardAction={ this._handleCardAction }
+                            ref={ this._saveHistoryRef }
+                        />
                     </MessagePane>
                     <Shell ref={ this._saveShellRef } />
-                    { resize }
+                    {
+                        this.props.resize === 'detect' &&
+                            <ResizeDetector onresize={ this.resizeListener } />
+                    }
                 </div>
             </Provider>
         );
