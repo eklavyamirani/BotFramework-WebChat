@@ -30,6 +30,8 @@
   "author": "Microsoft Corp",
   "license": "MIT",
   "dependencies": {
+    "@types/react": "15.0.38",
+    "@types/react-autosuggest": "^9.3.3",
     "adaptivecards": "1.0.0",
     "bluebird": "^3.5.1",
     "botframework-directlinejs": "0.9.13",
@@ -37,6 +39,8 @@
     "markdown-it": "8.3.1",
     "microsoft-speech-browser-sdk": "0.0.12",
     "react": "15.6.1",
+    "react-autocomplete": "^1.7.2",
+    "react-autosuggest": "^9.3.4",
     "react-dom": "15.6.1",
     "react-redux": "5.0.5",
     "redux": "3.7.2",

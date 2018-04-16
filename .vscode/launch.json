@@ -5,25 +5,33 @@
             "name": "Launch index.html with sourcemaps",
             "type": "chrome",
             "request": "launch",
-            "file": "${workspaceRoot}/index.html",
+            "url": "http://localhost:8000/samples/fullwindow/index.html?s=jrfgv-26gUc.cwA.nHE.ulvcmDQ8EUuHxbEHZAwk2M6nVyos9_znWqRWI-qufrA&debug",
             "sourceMaps": true,
             "webRoot": "${workspaceRoot}"
         },
         {
             "name": "Launch localhost with sourcemaps",
-            "type": "chrome",
+            "type": "firefox",
             "request": "launch",
-            "url": "http://localhost:8000",
-            "sourceMaps": true,
-            "webRoot": "${workspaceRoot}"
+            "url": "http://localhost:8000/",
+            "sourceMaps": "server",
+            "webRoot": "${workspaceRoot}/",
+            "pathMappings": [
+                { "url": "webpack:///", "path": "" }
+            ],
+            "log": {
+                "consoleLevel": {
+                    "PathConversion": "Debug",
+                    "default": "Error"
+                }
+            }
         },
         {
             "name": "Attach with sourcemaps",
-            "type": "chrome",
+            "type": "firefox",
             "request": "attach",
-            "port": 9222,
-            "sourceMaps": true,
-            "webRoot": "${workspaceRoot}"
+            "webRoot": "${workspaceRoot}",
+            "url": "http://localhost:8000/"
         },
         {
             "type": "node",

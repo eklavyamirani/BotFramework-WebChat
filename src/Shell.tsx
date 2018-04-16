@@ -5,15 +5,17 @@ import { classList } from './Chat';
 import { Dispatch, connect } from 'react-redux';
 import { Strings } from './Strings';
 import { Speech } from './SpeechModule'
+import * as Autosuggest from 'react-autosuggest';
 import { ChatActions, ListeningState, sendMessage, sendFiles } from './Store';
 
 interface Props {
     inputText: string,
     strings: Strings,
     listeningState: ListeningState,
-    showUploadButton: boolean
+    showUploadButton: boolean,
+    suggestResponse: (input: string) => Promise<string[]>,
 
-    onChangeText: (inputText: string) => void
+    onChangeText: (inputText: string) => void,
 
     sendMessage: (inputText: string) => void,
     sendFiles: (files: FileList) => void,
@@ -25,9 +27,18 @@ export interface ShellFunctions {
     focus: (appendKey?: string) => void
 }
 
-class ShellContainer extends React.Component<Props> implements ShellFunctions {
+class ShellContainer extends React.Component<Props, {value: string, suggestions: string[]}> implements ShellFunctions {
     private textInput: HTMLInputElement;
     private fileInput: HTMLInputElement;
+
+    constructor(props: Props) {
+        super(props);
+
+        this.state = {
+            value: '',
+            suggestions: []
+        }
+    }
 
     private sendMessage() {
         if (this.props.inputText.trim().length > 0) {
@@ -88,6 +99,14 @@ class ShellContainer extends React.Component<Props> implements ShellFunctions {
         }
     }
 
+    private onSuggestionsRequested(input: string): void {
+        this.props.suggestResponse(input).then((suggestions: string[]) => {
+            this.setState({
+                suggestions: suggestions
+            });
+        });
+    }
+
     render() {
         const className = classList(
             'wc-console',
@@ -108,6 +127,17 @@ class ShellContainer extends React.Component<Props> implements ShellFunctions {
             this.props.listeningState === ListeningState.STARTED && 'active',
             this.props.listeningState !== ListeningState.STARTED && 'inactive'
         );
+        
+        const onInputChanged = (event:React.FormEvent<any>, {newValue}: Autosuggest.ChangeEvent) => { 
+            this.setState({value: newValue});
+            // blank
+        }
+
+        const inputProps: Autosuggest.InputProps<any> = {
+            placeholder: 'Type something to see suggestions',
+            value: this.state.value,
+            onChange: onInputChanged 
+        }
 
         const placeholder = this.props.listeningState === ListeningState.STARTED ? this.props.strings.listeningIndicator : this.props.strings.consolePlaceholder;
 
@@ -140,7 +170,7 @@ class ShellContainer extends React.Component<Props> implements ShellFunctions {
                         />
                 }
                 <div className="wc-textbox">
-                    <input
+                    {/* <input
                         type="text"
                         className="wc-shellinput"
                         ref={ input => this.textInput = input }
@@ -152,6 +182,15 @@ class ShellContainer extends React.Component<Props> implements ShellFunctions {
                         placeholder={ placeholder }
                         aria-label={ this.props.inputText ? null : placeholder }
                         aria-live="polite"
+                    /> */}
+                    <Autosuggest
+                     suggestions={this.state.suggestions}
+                     onSuggestionsFetchRequested={(input) => this.onSuggestionsRequested(input.value)}
+                     getSuggestionValue={(suggestion) => suggestion.toString()}
+                     renderSuggestion={(suggestion: string, params: Autosuggest.RenderSuggestionParams) => <span>{suggestion}</span>}
+                     inputProps= {inputProps}
+                     alwaysRenderSuggestions = {true}
+                        
                     />
                 </div>
                 <button
@@ -195,6 +234,7 @@ export const Shell = connect(
         // only used to create helper functions below
         locale: state.format.locale,
         user: state.connection.user,
+        suggestResponse: state.shell.suggestResponse,
         listeningState: state.shell.listeningState
     }), {
         // passed down to ShellContainer
@@ -216,7 +256,8 @@ export const Shell = connect(
         sendMessage: (text: string) => dispatchProps.sendMessage(text, stateProps.user, stateProps.locale),
         sendFiles: (files: FileList) => dispatchProps.sendFiles(files, stateProps.user, stateProps.locale),
         startListening: () => dispatchProps.startListening(),
-        stopListening: () => dispatchProps.stopListening()
+        stopListening: () => dispatchProps.stopListening(),
+        suggestResponse: stateProps.suggestResponse
     }), {
         withRef: true
     }

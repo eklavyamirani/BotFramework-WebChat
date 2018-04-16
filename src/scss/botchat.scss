@@ -745,6 +745,10 @@
         background-color: $c_chrome;
     }
 
+    .react-autosuggest__suggestions-list {
+        list-style: none;
+    }
+    
 /* download button for Unknown media */
 
     .wc-icon-download {

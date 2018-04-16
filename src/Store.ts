@@ -55,6 +55,7 @@ export interface ShellState {
     input: string
     listeningState: ListeningState
     lastInputViaSpeech : boolean
+    suggestResponse?: (input: string) => Promise<string[]>
 }
 
 export type ShellAction = {
@@ -79,11 +80,14 @@ export type ShellAction = {
 } | {
     type: 'Send_Message',
     activity: Activity
-}| {
+} | {
     type: 'Speak_SSML',
     ssml: string,
     locale: string
     autoListenAfterSpeak: boolean
+} | {
+    type: 'Set_Suggest_Response',
+    suggestResponse: (input: string) => Promise<string[]>
 }
 
 export const shell: Reducer<ShellState> = (
@@ -144,6 +148,12 @@ export const shell: Reducer<ShellState> = (
                 ...state,
                 lastInputViaSpeech : false
            };
+
+        case 'Set_Suggest_Response':
+           return {
+               ... state,
+               suggestResponse: action.suggestResponse
+           }
 
         default:
             return state;
@@ -678,7 +688,10 @@ const showTypingEpic: Epic<ChatActions, ChatState> = (action$) =>
 
 const sendTypingEpic: Epic<ChatActions, ChatState> = (action$, store) =>
     action$.ofType('Update_Input')
-    .map(_ => store.getState())
+    .map(_ => { 
+        const state = store.getState()
+        return state;
+    })
     .filter(state => state.shell.sendTyping)
     .throttleTime(3000)
     .do(_ => konsole.log("sending typing"))
@@ -690,6 +703,16 @@ const sendTypingEpic: Epic<ChatActions, ChatState> = (action$, store) =>
         .map(_ => nullAction)
         .catch(error => Observable.of(nullAction))
     );
+
+const suggestResponseEpic: Epic<ChatActions, ChatState> = (action$, store) =>
+    action$.ofType('Update_Input')
+    .filter(_ => store.getState().shell.suggestResponse != null)
+    .throttleTime(3000)
+    .map(action => { 
+        const state = store.getState()
+        state.shell.suggestResponse(action.input)
+        return action;
+    });
 
 // Now we put it all together into a store with middleware
 
@@ -711,6 +734,7 @@ export const createStore = () =>
             sendMessageEpic,
             trySendMessageEpic,
             retrySendMessageEpic,
+            suggestResponseEpic,
             showTypingEpic,
             sendTypingEpic,
             speakSSMLEpic,

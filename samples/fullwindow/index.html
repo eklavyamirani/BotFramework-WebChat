@@ -53,8 +53,9 @@
         bot: bot,
         locale: params['locale'],
         resize: 'window',
-        // sendTyping: true,    // defaults to false. set to true to send 'typing' activities to bot (and other users) when user is typing
+        sendTyping: true,    // defaults to false. set to true to send 'typing' activities to bot (and other users) when user is typing
         user: user,
+        suggestResponse: logToConsole,
         // locale: 'es-es', // override locale to Spanish
 
         directLine: {
@@ -64,6 +65,30 @@
           webSocket: params['webSocket'] && params['webSocket'] === 'true' // defaults to true
         }
       }, document.getElementById('BotChatGoesHere'));
+
+      function logToConsole(input) {
+        return {
+          then: (thenCallback) => {
+            if (!input || input.length === 0) {
+              thenCallback([]);
+              return;
+            }
+
+            let availableCommands = ["help", "hello", "who Am I", "what is your name", "what can you do", "why is the sky blue"];
+            
+            let suggestions = [];
+            for (let i = 0; i < availableCommands.length; ++i) {
+              if (availableCommands[i].indexOf(input.toLowerCase()) !== -1) {
+                suggestions.push(availableCommands[i]);
+              }
+            };
+            
+            console.log("suggestions: " + suggestions);
+            thenCallback(suggestions);
+          },
+          catch: () => {}
+        };
+      }
     </script>
   </body>
 </html>
